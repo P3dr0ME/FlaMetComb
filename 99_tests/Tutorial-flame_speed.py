@@ -52,7 +52,7 @@ for m, name in models.items():
     for j, phi in enumerate(phi_list):
         gas.set_equivalence_ratio(phi, 'NH3', {'O2':1, 'N2': 3.76})
         gas.TP = Tin, (p/760)*ct.one_atm
-        f = ct.FreeFlame(gas, width=0.03)
+        f = ct.FreeFlame(gas, width=0.06)
         f.set_refine_criteria(ratio=3, slope=0.06, curve=0.10)
         # f.transport_model = 'multicomponent' # optionally enable
         f.soret_enabled = True  # optionally enable
