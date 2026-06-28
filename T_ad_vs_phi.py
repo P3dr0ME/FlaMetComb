@@ -4,43 +4,40 @@ import cantera as ct
 import numpy as np
 import matplotlib.pyplot as plt
 import scienceplots
-plt.style.use(['science','ieee'])
+plt.style.use(['science'])
 
-# Definir todos los objetos "Species" según el modelo Gri30
-species = {S.name: S for S in ct.Species.list_from_file("gri30.yaml")}
-# species es un diccionario: {'H2': <Species H2>, 'H': <Species H>, ...}
-# keys: nombres de especies
-# values: objetos Species
+# Definir todos los objetos species según el modelo Gri30
+species_dict = {S.name: S for S in ct.Species.list_from_file("gri30.yaml")}
+# species_dict es un diccionario:
+# {objeto1.name: objeto1, objeto2.name: objeto.2}
+# keys: las propiedades "name" de los objetos species.
+# values: los propios objetos species cuyos atributos (como los coefs para calcular cp)
+# se definen en el gri30.yaml.
 
+complete_species = [species_dict[S] for S in ("CH4", "O2", "N2", "CO2", "H2O")]
+# complete_species es una lista de objetos species (solo los de en combustión completa)
 
-#%%
-# Crea una lista a partir de values de species (<Species H2> por ejemplo) pero añadiendo
-# solo los values cuyas keys son las especies de la reacción de combustión completa.
-complete_species = [species[S] for S in ("CH4", "O2", "N2", "CO2", "H2O")]
-# Para que fuera un dict: complete_comb_species =
-# {S: species[S] for S in ("CH4", "O2", "N2", "CO2", "H2O")}
+# Para reacción incompleta añadimos las 53 especies del GRI3.0
+incomplete_species = species_dict.values()
+# con la función values se crea una lista con los valores del diccionario species_dict,
+# es decir, los objetos species.
 
-# Para reacción incomplete añadimos las 53 especies del GRI3.0
-incomplete_species = species.values()
-
-#%%
 gas_mix_complete = ct.Solution(thermo="ideal-gas",
                                species=complete_species,
                                transport_model='mixture-averaged',
                                kinetics='gas')
-# A diferencia de Tutorial.py, aquí solo damos a la clase Solution "ideal gas"
-# (el modelo termo que queremos) y la lista reducida de especies sacadas de gri30.yaml,
-# en lugar de sacar todo tal cual de gri30.yaml.
+# gas_mix_complete() muestra todos la info sobre el objeto ct.Solution.
+
+
+
 gas_mix_incomplete = ct.Solution(thermo="ideal-gas",
                                  species=incomplete_species,
                                  transport_model='mixture-averaged',
                                  kinetics='gas')
 # print(f"Transport model: {gas_mix_incomplete.transport_model}")
-    # de gri30.yaml no he sacado transport_model, por eso no está definido
+# de gri30.yaml no he sacado transport_model, por eso no está definido
 
-
-
-#%%
+#%% Cálculo de T_ad
 #Crear vector con valores de ratio de equivalencia.
 phi = np.linspace(0.6, 1.8, 100)
 
@@ -51,7 +48,6 @@ T_ad_incomplete = np.zeros(phi.shape)
 
 T_0 = 298 # K
 p = ct.one_atm
-
 
 for i in range(len(phi)):
     #print("%"*80)
@@ -71,8 +67,9 @@ for i in range(len(phi)):
 
     gas_mix_incomplete.set_equivalence_ratio(phi[i], "CH4", "O2:1, N2:3.76")
 
-    # Calcula el equilibrio químico, manteniendo entalpía y presión ctes., de gas_mix y lo guarda en gas_mix.
-    # El equlibrio acaba calculando la combustión porque es la reacción espontánea.
+    # La función equilibrate() calcula el estado de equilibrio, a p y T ctes.,
+    # que minimiza el potencial de Gibbs. Como esta combustión es espontánea,
+    # ese estado final es el posterior a la combustión y como hemos impuesto H cte., su T es la T_ad.
     gas_mix_complete.equilibrate("HP")
     gas_mix_incomplete.equilibrate("HP")
 
@@ -88,34 +85,37 @@ plt.figure(figsize=(8,8))
 
 plt.plot(phi,
         T_ad_complete,
-        label="complete combustion",
-        lw=2)
+        label="Complete combustion",
+        #lw=2
+        )
 plt.plot(phi,
         T_ad_incomplete,
-        label="GRI3.0 (Cantera)",
-        lw=2)
+        label="Incomplete (GRI3.0)",
+        #lw=2
+        )
     # phi es vector de abscisas y T_ad_incomplete, de ordenadas
     # lw: line width
 
-# ax = plt.gca()
-# # Ajuste Eje Y (Números cada 200, líneas cada 50)
-# ax.yaxis.set_major_locator(plt.MultipleLocator(200))
-# ax.yaxis.set_minor_locator(plt.MultipleLocator(50))
-# # Ajuste Eje X (Números cada 0.2, líneas cada 0.05)
-# ax.xaxis.set_major_locator(plt.MultipleLocator(0.2))
-# ax.xaxis.set_minor_locator(plt.MultipleLocator(0.05))
+ax = plt.gca()
+# Ajuste Eje Y (Números cada 200, líneas cada 50)
+ax.yaxis.set_major_locator(plt.MultipleLocator(200))
+ax.yaxis.set_minor_locator(plt.MultipleLocator(50))
+# Ajuste Eje X (Números cada 0.2, líneas cada 0.05)
+ax.xaxis.set_major_locator(plt.MultipleLocator(0.2))
+ax.xaxis.set_minor_locator(plt.MultipleLocator(0.05))
 
 plt.grid(True, which='both', alpha=0.5)
 
-plt.xlabel(f"Equivalence ratio, $\phi$ \n p = {p} Pa    $T_{{0}}$ = {T_0} K")
+plt.xlabel("Equivalence ratio, "+ r"$\phi$"+ f"\n \n p = {p} Pa    $T_{{0}}$ = {T_0} K")
 plt.ylabel("Temperature [K]")
 
 plt.legend(loc='best', fontsize=10)
     # muestra las label definidas en plt.plot
 
-# plt.xlim(0.6,1.8)
-# plt.ylim(1400,2400)
+plt.xlim(0.6,1.8)
+plt.ylim(1400,2400)
 
+plt.savefig("T_ad_vs_phi.svg")
 plt.show()
     # muestra el gráfico
-# plt.savefig("T_ad_vs_phi.svg")
+    # plt.show() debe ir después de plt.savefig()
