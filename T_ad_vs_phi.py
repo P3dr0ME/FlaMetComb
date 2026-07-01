@@ -86,12 +86,12 @@ plt.figure(figsize=(8,8))
 plt.plot(phi,
         T_ad_complete,
         label="Complete combustion",
-        #lw=2
+        marker="o"
         )
 plt.plot(phi,
         T_ad_incomplete,
         label="Incomplete (GRI3.0)",
-        #lw=2
+        marker="o"
         )
     # phi es vector de abscisas y T_ad_incomplete, de ordenadas
     # lw: line width
