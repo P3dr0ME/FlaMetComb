@@ -24,12 +24,19 @@ gas_mix_incomplete.set_equivalence_ratio(phi, 'CH4', 'O2: 1.0, N2: 3.76')
 print(f"\033[1;36m## PRESSURE (Pa): {p} ##\033[0m")
 gas_mix_incomplete.TP = T_0, p
 
+print("Before flame creation")
+gas_mix_incomplete()
 
 # Llama
 flame = ct.FreeFlame(gas=gas_mix_incomplete, width=0.001)
 flame.set_refine_criteria(ratio=3, slope=0.06, curve=0.12)
+print("Before flame solve")
+gas_mix_incomplete()
+
 
 
 flame.solve(loglevel=0, refine_grid=True, auto=True)
+print("After flame solve")
+gas_mix_incomplete()
 
 print(f"\033[1;36m# LAMINAR BURNING SPEED (cm/s): {flame.velocity[0]*100} cm/s ###\033[0m")

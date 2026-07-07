@@ -28,7 +28,8 @@ for j, phi in enumerate(phi_list):
         print(f"\033[1;36m## PRESSURE (Pa): {p} ##\033[0m")
 
         gas_mix_incomplete.set_equivalence_ratio(phi, 'CH4', 'O2: 1.0, N2: 3.76')
-        # Establecimiento de phi en el gas debe ir dentro del bucle de presión.
+        # Restablecer composición a la de los reactantes antes de resolver la llama de nuevo
+
         gas_mix_incomplete.TP = T_0, p
 
         # Llama
