@@ -6,6 +6,12 @@ import matplotlib.pyplot as plt
 import scienceplots
 plt.style.use(['science'])
 
+# INPUTS:
+type = "air" # "oxi" or "air"
+T_R = 298 # K
+p = ct.one_atm
+N=100 # Número de puntos en el vector phi_list
+
 # Definir todos los objetos species según el modelo Gri30
 species_dict = {S.name: S for S in ct.Species.list_from_file("gri30.yaml")}
 ideal_species = [species_dict[S] for S in ("CH4", "O2", "N2", "CO2", "H2O")]
@@ -13,7 +19,7 @@ gas_ideal = ct.Solution(thermo="ideal-gas",
                     species=ideal_species,
                     transport_model='mixture-averaged',
                     kinetics='gas')
-gas_ideal_aux  = ct.Solution(thermo="ideal-gas", # Para calcular cp_ave en T=(Tad-T_0)/2
+gas_ideal_aux  = ct.Solution(thermo="ideal-gas", # Para calcular cp_ave en T=(Tad-T_R)/2
                     species=ideal_species,
                     transport_model='mixture-averaged',
                     kinetics='gas')
@@ -22,65 +28,64 @@ gas = ct.Solution('gri30.yaml')
 
 #%% Cálculo de T_ad
 #Crear vector con valores de ratio de equivalencia.
-phi_list = np.linspace(0.2, 1.8, 100)
+phi_list = np.linspace(0.2, 1.8, N)
 
 # Inicializar (crear con todo 0) elos vectores.
-T_ad_ideal = np.zeros(phi_list.shape)
-T_ad_incomplete = np.zeros(phi_list.shape)
-    # ERROR: poner T_ad_incomplete = T_ad_ideal.
-T_ad_analytic = np.zeros(phi_list.shape)
-cp_ave = np.zeros(phi_list.shape)
-
-T_0 = 298 # K
-p = ct.one_atm
+T_ad_ideal = {phi: None for phi in phi_list}
+T_ad_incomplete = {phi: None for phi in phi_list}
+T_ad_analytic = {phi: None for phi in phi_list}
+cp_ave = {phi: None for phi in phi_list}
 
 M_CH4 = 16.04e-3 # kg/mol
 M_aire = 137.33e-3 # kg/mol
-f_s = 1*M_CH4/(2*M_aire) # Dosado estequiométrico
+M_O2 = 32e-3 # kg/mol
+f_s = 1*M_CH4/(2*M_aire) if type == "air" else 1*M_CH4/(2*M_O2) # Dosado estequiométrico
 LHV = 50.048e6 # J/kg. Springer, Appendix 1.
+
+oxidizer = "O2" if type == "oxi" else "O2:1, N2:3.76"
 
 for i in range(len(phi_list)):
     phi=phi_list[i]
     # Se restablece T y p iniciales en cada bucle para calcular la T_ad
     # para cada phi cuando se parte de estas cond. iniciales.
-    gas_ideal.TP = T_0, p
-    gas.TP = T_0, p
+    gas_ideal.TP = T_R, p
+    gas.TP = T_R, p
     # El método set_equivalence_ratio de la clase Solution toma
         # · 1 valor phi,
         # · 1 str con nombres de especies y su X en el fuel (si se sabe)
         # · 1 str con nombres de especies y sus X en el oxidizer (si se saben)
-    gas_ideal.set_equivalence_ratio(phi, "CH4", "O2:1, N2:3.76")
+    gas_ideal.set_equivalence_ratio(phi, "CH4", f"{oxidizer}")
         # CH4 no lleva X porque no hay más especies en fuel (X=1).
-    gas.set_equivalence_ratio(phi, "CH4", "O2:1, N2:3.76")
+    gas.set_equivalence_ratio(phi, "CH4", f"{oxidizer}")
     # La función equilibrate() calcula el estado de equilibrio, a p y T ctes.,
     # que minimiza el potencial de Gibbs. Como esta combustión es espontánea,
     # ese estado final es el posterior a la combustión y como hemos impuesto H cte., su T es la T_ad.
     gas_ideal.equilibrate("HP")
     gas.equilibrate("HP")
     # Por tanto la T de gas_mix ahora será la Tad
-    T_ad_ideal[i] = gas_ideal.T
-    T_ad_incomplete[i] = gas.T
+    T_ad_ideal[phi] = gas_ideal.T
+    T_ad_incomplete[phi] = gas.T
 
-    gas_ideal_aux.set_equivalence_ratio(phi, "CH4", "O2:1, N2:3.76")
-    gas_ideal_aux.TP = (T_ad_ideal[i]+T_0)/2, p # T=(Tad+T0)/2
-    cp_ave[i] = gas_ideal_aux.cp # lista de cp (másicos) de productos de reacción completa
+    gas_ideal_aux.set_equivalence_ratio(phi, "CH4", f"{oxidizer}")
+    gas_ideal_aux.TP = (T_ad_ideal[phi]+T_R)/2, p # T=(T_ad+T_R)/2
+    cp_ave[phi] = gas_ideal_aux.cp # lista de cp (másicos) de productos de reacción completa
     if 0<phi<=1: # pobre
-        T_ad_analytic[i] = T_0 + ( phi*f_s*LHV ) / ( (1+phi*f_s)*cp_ave[i] )
+        T_ad_analytic[phi] = T_R + ( phi*f_s*LHV ) / ( (1+phi*f_s)*cp_ave[phi] )
     elif phi>1: # rica
-        T_ad_analytic[i] = T_0 + ( f_s*LHV ) / ( (1+phi*f_s)*cp_ave[i] )
+        T_ad_analytic[phi] = T_R + ( f_s*LHV ) / ( (1+phi*f_s)*cp_ave[phi] )
 
 
 #%% Plot T - phi
 plt.figure(figsize=(8,8))
 
 plt.plot(phi_list,
-        T_ad_ideal,
+        T_ad_ideal.values(),
         label="Ideal (Cantera - GRI3.0)",
         marker="."
         )
 
 plt.plot(phi_list,
-        T_ad_incomplete,
+        T_ad_incomplete.values(),
         label="Incompleta (Cantera - GRI3.0)",
         marker="."
         )
@@ -88,9 +93,9 @@ plt.plot(phi_list,
     # lw: line width
 
 plt.plot(phi_list,
-        T_ad_analytic,
+        T_ad_analytic.values(),
         label="Analítica",
-        marker="."
+        marker=""
         )
 
 ax = plt.gca()
@@ -103,8 +108,8 @@ ax.xaxis.set_minor_locator(plt.MultipleLocator(0.05))
 
 plt.grid(True, which='both', alpha=0.5)
 
-plt.xlabel("Ratio de equivalencia, "+ r"$\phi$"+ f"\n \n p = {p} Pa    $T_{{0}}$ = {T_0} K")
-plt.ylabel("Temperatura adiabática, T_{{ad}} [K]")
+plt.xlabel("Ratio de equivalencia, "+ r"$\phi$"+ f"\n p = {p} Pa  \n  $T_{{0}}$ = {T_R} K")
+plt.ylabel("Temperatura adiabática [K]")
 
 plt.legend(loc='best', fontsize=10)
     # muestra las label definidas en plt.plot
@@ -112,7 +117,5 @@ plt.legend(loc='best', fontsize=10)
 plt.xlim(phi_list[0], phi_list[-1])
 # plt.ylim(1400,2400)
 
-plt.savefig("./plots/T_ad/T_ad_vs_phi_air.svg")
-plt.show()
-    # muestra el gráfico
-    # plt.show() debe ir después de plt.savefig()
+plt.savefig(f"./plots/T_ad/T_ad_vs_phi_{type}.svg")
+plt.show() # muestra el gráfico y debe ir después de plt.savefig()
