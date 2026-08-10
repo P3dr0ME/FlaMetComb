@@ -7,7 +7,7 @@ import scienceplots
 plt.style.use(['science'])
 
 # INPUTS:
-type = "air" # "oxi" or "air"
+type = "oxi" # "oxi" or "air"
 T_R = 298 # K
 p = ct.one_atm
 N=100 # Número de puntos en el vector phi_list
@@ -78,6 +78,14 @@ for i in range(len(phi_list)):
 #%% Plot T - phi
 plt.figure(figsize=(8,8))
 
+plt.title(
+    r"\bf{Temperatura\ adiabática\ de\ llama\ frente\ a\ ratio\ de\ equivalencia}" + "\n"
+    f"{'Oxígeno' if type == 'oxi' else 'Aire'} \n"
+    fr"$p = {p}$ Pa $\quad T_{{0}} = {T_R}$ K",
+    fontsize=11,
+    pad=15
+)
+
 plt.plot(phi_list,
         T_ad_ideal.values(),
         label="Ideal (Cantera - GRI3.0)",
@@ -108,7 +116,7 @@ ax.xaxis.set_minor_locator(plt.MultipleLocator(0.05))
 
 plt.grid(True, which='both', alpha=0.5)
 
-plt.xlabel("Ratio de equivalencia, "+ r"$\phi$"+ f"\n p = {p} Pa  \n  $T_{{0}}$ = {T_R} K")
+plt.xlabel("Ratio de equivalencia, "+ r"$\phi$")
 plt.ylabel("Temperatura adiabática [K]")
 
 plt.legend(loc='best', fontsize=10)

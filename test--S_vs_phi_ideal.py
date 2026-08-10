@@ -11,10 +11,39 @@ start_time = time.time()
 type = "oxi" # "oxi" or "air"
 T_R = 298 # K
 p = ct.one_atm
-phi_begin = 0.3; phi_end = 1.8; N = 20
+
+phi_begin = 0.5
+phi_end = 1.8
+N = 5
 
 # Definición del gas con el modelo GRI3.0
-gas = ct.Solution('gri30.yaml')
+#gas = ct.Solution('gri30.yaml')
+species_dict = {S.name: S for S in ct.Species.list_from_file("gri30.yaml")}
+ideal_species = [species_dict[name] for name in ["CH4", "O2", "N2", "CO2", "H2O"]]
+
+# Definir reacción global ideal --
+
+# WIP -- HAY QUE CONSEGUIR DEFINIR LA REACCIÓN GLOBAL EN UN PASO.
+
+A_0 = 8.3e5 # (mol/cm^3)^(1-a-b) /s
+a = -0.3; b = 1.3
+E_a = 30 #
+
+ideal_reaction = ct.Reaction(
+    equation="CH4 + 2 O2 => CO2 + 2 H2O",
+    rate=ct.ArrheniusRate(A=A_0, b=0.0, Ea=E_a),
+    orders={"CH4": a, "O2": b}
+)
+
+# Create the gas
+gas_ideal = ct.Solution(
+    thermo="ideal-gas",
+    kinetics="gas",
+    species=ideal_species,
+    reactions=[ideal_reaction],
+    transport_model="mixture-averaged"
+)
+
 
 #%% Cálculo de velocidad de llama
 
@@ -24,22 +53,21 @@ phi_list = [phi_begin + (phi_end-phi_begin) * (n/(N-1) + np.sin(2*np.pi*n/(N-1))
 vel_list = {phi: None for phi in phi_list}
 T_P_llama = {phi: None for phi in phi_list}
 
-oxidizer = "O2" if type == "oxi" else "O2:1, N2:3.76"
 
 for j, phi in enumerate(phi_list):
     # Contador j vale 0, 1, 2 (las posiciones de la lista iterada, en vez de valores)
     print(f"\033[1;36m### RATIO DE EQUIVALENCIA: {phi} ###\033[0m")
 
-    gas.TP = T_R, p
-    gas.set_equivalence_ratio(phi, 'CH4', f'{oxidizer}')
+    gas_ideal.TP = T_R, p
+    gas_ideal.set_equivalence_ratio(phi, 'CH4', f'{oxidizer}')
 
     # Llama
-    flame = ct.FreeFlame(gas=gas, width=0.03)
+    flame = ct.FreeFlame(gas=gas_ideal, width=0.03)
         # Clase FreeFlame --> llama de premezcla 1D
         # width crea grid en intervalo [0,width]
         # y que solver determine ptos. intermedios.
 
-    flame.set_refine_criteria(ratio=3, slope=0.06, curve=0.12)
+    flame.set_refine_criteria(ratio=2, slope=0.06, curve=0.12)
         # Criterios que solver seguirá para refinar grid.
         # Por ejemplo, slope dice que si dif. máx de valores en nodos adyacentes
         # supera el 6% de la máx diferencia del perfil, añade puntos intermedios.
@@ -106,9 +134,9 @@ for i in range(len(phi_list)):
     C_CH4 = (X_CH4*p)/(R_u_SI*T_R) / 1e6 # mol/cm^3
     C_O2 = (X_O2*p)/(R_u_SI*T_R) / 1e6 # mol/cm^3
 
-    gas_ideal_aux.TP = T_ig, p
+    gas_ideal_aux.TP = T_ave[phi], p
     cp_ave[phi] = gas_ideal_aux.cp # lista de cp de productos como base de datos para calcular T_ad analítica
-    # cp_ave[phi] = 2400
+
     if 0<phi<=1: # pobre
         T_ad_analytic[phi] = T_R + ( phi*f_s*LHV ) / ( (1+phi*f_s)*cp_ave[phi] )
     elif phi>1: # rica
@@ -126,17 +154,9 @@ for i in range(len(phi_list)):
 #%% Plot Speed - phi
 plt.figure(figsize=(8,8))
 
-plt.title(
-    r"\bf{Velocidad\ de\ llama\ frente\ a\ ratio\ de\ equivalencia}" + "\n"
-    f"{'Oxígeno' if type == 'oxi' else 'Aire'} \n"
-    fr"$p = {p}$ Pa $\quad T_{{0}} = {T_R}$ K",
-    fontsize=11,
-    pad=15
-)
-
 plt.plot(phi_list,
         vel_list.values(),
-        label="Incomplete (Cantera - GRI 3.0)",
+        label="Ideal (Cantera - GRI 3.0)",
         marker=".")
 
 plt.plot(phi_list,
@@ -146,7 +166,7 @@ plt.plot(phi_list,
 
 plt.grid(True, which='both', alpha=0.5)
 
-plt.xlabel("Ratio de equivalencia, " + r"$\phi$")
+plt.xlabel("Ratio de equivalencia, " + r"$\phi$" + f"\n \n p = {p} Pa    $T_{{0}}$ = {T_R} K")
 plt.ylabel("Velocidad de llama [cm/s]")
 
 plt.legend(loc='best', fontsize=10)
