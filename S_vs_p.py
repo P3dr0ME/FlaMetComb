@@ -9,7 +9,7 @@ start_time = time.time()
 
 # INPUTS:
 type = "air" # "oxi" or "air"
-T_R = 300 # K
+T_r = 300 # K
 
 
 gas = ct.Solution('gri30.yaml')
@@ -34,7 +34,7 @@ for j, phi in enumerate(phi_list):
         gas.set_equivalence_ratio(phi, 'CH4', f'{oxidizer}')
         # Restablecer composición a la de los reactantes antes de resolver la llama de nuevo
 
-        gas.TP = T_R, p
+        gas.TP = T_r, p
 
         # Llama
         flame = ct.FreeFlame(gas=gas, width=0.03)
@@ -61,7 +61,7 @@ for phi in phi_list:
             label=r"$\phi$" + f"= {phi} (Cantera - GRI3.0)",
             marker=".")
 plt.grid(True, which='both', alpha=0.5)
-plt.xlabel("Presión, p [Pa] \n \n" + f"$T_{{0}}$ = {T_R} K")
+plt.xlabel("Presión, p [Pa] \n \n" + f"$T_{{0}}$ = {T_r} K")
 plt.ylabel("Velocidad de llama [cm/s]")
 plt.legend(loc='best', fontsize=10)
 plt.savefig(f"plots/S_vs_p/S_vs_p_{type}.svg")

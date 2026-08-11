@@ -9,9 +9,9 @@ start_time = time.time()
 
 # INPUTS:
 type = "oxi" # "oxi" or "air"
-T_R = 298 # K
+T_r = 298 # K
 p = ct.one_atm
-phi_begin = 0.3; phi_end = 1.8; N = 20
+phi_begin = 0.3; phi_end = 1.8; N = 5
 
 # Definición del gas con el modelo GRI3.0
 gas = ct.Solution('gri30.yaml')
@@ -23,6 +23,7 @@ phi_list = [phi_begin + (phi_end-phi_begin) * (n/(N-1) + np.sin(2*np.pi*n/(N-1))
 
 vel_list = {phi: None for phi in phi_list}
 T_P_llama = {phi: None for phi in phi_list}
+cp_incomplete = {phi: None for phi in phi_list}
 
 oxidizer = "O2" if type == "oxi" else "O2:1, N2:3.76"
 
@@ -30,7 +31,7 @@ for j, phi in enumerate(phi_list):
     # Contador j vale 0, 1, 2 (las posiciones de la lista iterada, en vez de valores)
     print(f"\033[1;36m### RATIO DE EQUIVALENCIA: {phi} ###\033[0m")
 
-    gas.TP = T_R, p
+    gas.TP = T_r, p
     gas.set_equivalence_ratio(phi, 'CH4', f'{oxidizer}')
 
     # Llama
@@ -61,6 +62,8 @@ for j, phi in enumerate(phi_list):
         # flame.velocity[0] = velocidad en primer grid point (inlet).
     T_P_llama[phi] = flame.T[-1] # K. Sirve para aproximar T_ad analítica.
 
+    cp_incomplete[phi] = flame.cp[-1]
+
     print("Tiempo de cómputo %s segundos ---" % (time.time() - start_time))
 
 print("TIEMPO DE CÓMPUTO TOTAL --- %s segundos ---" % (time.time() - start_time))
@@ -84,11 +87,13 @@ R_u_a = 1.98591e-3 # kcal/(mol·K). Constante universal de los gases.
 R_u_SI = 8.31447 # J/(mol·K). Constante universal de los gases.
 T_act = E_a/R_u_a # K. Temperatura de activación
 
-T_ig = (T_act - np.sqrt(T_act**2 - 4*T_act*T_R)) / 2
+T_ig = (T_act - np.sqrt(T_act**2 - 4*T_act*T_r)) / 2
 
 T_ad_analytic = {phi: None for phi in phi_list}
 vel_list_analytic = {phi: None for phi in phi_list}
 cp_ave = {phi: None for phi in phi_list}
+k_ave = {phi: None for phi in phi_list}
+rho_ave_reactants = {phi: None for phi in phi_list}
 
 T_ave = {phi: (T_P_llama[phi]+T_ig)/2 for phi in phi_list}
 
@@ -96,32 +101,33 @@ for i in range(len(phi_list)):
     phi=phi_list[i]
     #Cálculo de T_ad analítica
     gas_ideal_aux.set_equivalence_ratio(phi, "CH4", f"{oxidizer}")
-    gas_ideal_aux.TP = T_R, p
-    rho_ave_reactants = gas_ideal_aux.density
-    # La densidad se aproxima con la de reactantes. Por eso se calcula aquí a la T_R.
+    gas_ideal_aux.TP = T_r, p
+    rho_ave_reactants[phi] = gas_ideal_aux.density
+    # La densidad se aproxima con la de reactantes. Por eso se calcula aquí a la T_r.
 
     X_CH4 = gas_ideal_aux.X[gas_ideal_aux.species_index("CH4")]
     X_O2 = gas_ideal_aux.X[gas_ideal_aux.species_index("O2")]
 
-    C_CH4 = (X_CH4*p)/(R_u_SI*T_R) / 1e6 # mol/cm^3
-    C_O2 = (X_O2*p)/(R_u_SI*T_R) / 1e6 # mol/cm^3
+    C_CH4 = (X_CH4*p)/(R_u_SI*T_r) / 1e6 # mol/cm^3
+    C_O2 = (X_O2*p)/(R_u_SI*T_r) / 1e6 # mol/cm^3
 
-    gas_ideal_aux.TP = T_ig, p
+    gas_ideal_aux.TP = T_ave[phi], p
     cp_ave[phi] = gas_ideal_aux.cp # lista de cp de productos como base de datos para calcular T_ad analítica
     # cp_ave[phi] = 2400
     if 0<phi<=1: # pobre
-        T_ad_analytic[phi] = T_R + ( phi*f_s*LHV ) / ( (1+phi*f_s)*cp_ave[phi] )
+        T_ad_analytic[phi] = T_r + ( phi*f_s*LHV ) / ( (1+phi*f_s)*cp_ave[phi] )
     elif phi>1: # rica
-        T_ad_analytic[phi] = T_R + ( f_s*LHV ) / ( (1+phi*f_s)*cp_ave[phi] )
+        T_ad_analytic[phi] = T_r + ( f_s*LHV ) / ( (1+phi*f_s)*cp_ave[phi] )
 
-    k_ave = gas_ideal_aux.thermal_conductivity # W/m/K. Conductividad térmica
-    alpha_ave = k_ave/(rho_ave_reactants*cp_ave[phi]) # m^2/s. Difusividad térmica
+    k_ave[phi] = gas_ideal_aux.thermal_conductivity # W/m/K. Conductividad térmica
+
+    alpha_ave = k_ave[phi]/(rho_ave_reactants[phi]*cp_ave[phi]) # m^2/s. Difusividad térmica
 
     r_f_ave = 1.0 * A_0 * C_CH4**a * C_O2**b * np.exp(-T_act/T_ave[phi])
     tau_q = C_CH4/r_f_ave # s. Tiempo químico promedio
 
 
-    vel_list_analytic[phi] = np.sqrt( (alpha_ave/tau_q) * (T_ad_analytic[phi]-T_ig)/(T_ig-T_R) ) * 100 # cm/s
+    vel_list_analytic[phi] = np.sqrt( (alpha_ave/tau_q) * (T_ad_analytic[phi]-T_ig)/(T_ig-T_r) ) * 100 # cm/s
 
 #%% Plot Speed - phi
 plt.figure(figsize=(8,8))
@@ -129,7 +135,7 @@ plt.figure(figsize=(8,8))
 plt.title(
     r"\bf{Velocidad\ de\ llama\ frente\ a\ ratio\ de\ equivalencia}" + "\n"
     f"{'Oxígeno' if type == 'oxi' else 'Aire'} \n"
-    fr"$p = {p}$ Pa $\quad T_{{0}} = {T_R}$ K",
+    fr"$p = {p}$ Pa $\quad T_{{0}} = {T_r}$ K",
     fontsize=11,
     pad=15
 )
@@ -172,19 +178,19 @@ plt.legend(loc='best', fontsize=10)
 plt.show()
 
 # %% Plot T_ad vs phi
-# plt.figure(figsize=(8,8))
+plt.figure(figsize=(8,8))
 
-# plt.plot(phi_list,
-#         T_ad_analytic.values(),
-#         label="Analítica",
-#         marker=""
-#         )
+plt.plot(phi_list,
+        T_ad_analytic.values(),
+        label="Analítica",
+        marker=""
+        )
 
-# plt.grid(True, which='both', alpha=0.5)
+plt.grid(True, which='both', alpha=0.5)
 
-# plt.xlabel("Ratio de equivalencia, " + r"$\phi$")
-# plt.ylabel("T_ad [K]")
+plt.xlabel("Ratio de equivalencia, " + r"$\phi$")
+plt.ylabel("T_ad [K]")
 
-# plt.legend(loc='best', fontsize=10)
+plt.legend(loc='best', fontsize=10)
 
-# plt.show()
+plt.show()

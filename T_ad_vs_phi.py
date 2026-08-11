@@ -8,9 +8,9 @@ plt.style.use(['science'])
 
 # INPUTS:
 type = "oxi" # "oxi" or "air"
-T_R = 298 # K
+T_r = 298 # K
 p = ct.one_atm
-N=100 # Número de puntos en el vector phi_list
+N=10 # Número de puntos en el vector phi_list
 
 # Definir todos los objetos species según el modelo Gri30
 species_dict = {S.name: S for S in ct.Species.list_from_file("gri30.yaml")}
@@ -19,7 +19,7 @@ gas_ideal = ct.Solution(thermo="ideal-gas",
                     species=ideal_species,
                     transport_model='mixture-averaged',
                     kinetics='gas')
-gas_ideal_aux  = ct.Solution(thermo="ideal-gas", # Para calcular cp_ave en T=(Tad-T_R)/2
+gas_ideal_aux  = ct.Solution(thermo="ideal-gas", # Para calcular cp_ave en T=(Tad-T_r)/2
                     species=ideal_species,
                     transport_model='mixture-averaged',
                     kinetics='gas')
@@ -44,12 +44,16 @@ LHV = 50.048e6 # J/kg. Springer, Appendix 1.
 
 oxidizer = "O2" if type == "oxi" else "O2:1, N2:3.76"
 
+cp_ideal = {phi: None for phi in phi_list}
+cp_incomplete = {phi: None for phi in phi_list}
+cp_ave = {phi: None for phi in phi_list}
+
 for i in range(len(phi_list)):
     phi=phi_list[i]
     # Se restablece T y p iniciales en cada bucle para calcular la T_ad
     # para cada phi cuando se parte de estas cond. iniciales.
-    gas_ideal.TP = T_R, p
-    gas.TP = T_R, p
+    gas_ideal.TP = T_r, p
+    gas.TP = T_r, p
     # El método set_equivalence_ratio de la clase Solution toma
         # · 1 valor phi,
         # · 1 str con nombres de especies y su X en el fuel (si se sabe)
@@ -62,17 +66,20 @@ for i in range(len(phi_list)):
     # ese estado final es el posterior a la combustión y como hemos impuesto H cte., su T es la T_ad.
     gas_ideal.equilibrate("HP")
     gas.equilibrate("HP")
+    cp_incomplete[phi] = gas.cp # lista de cp (másicos) de productos de reacción completa
+    cp_ideal[phi] = gas_ideal.cp # lista de cp (másicos) de productos de reacción completa
     # Por tanto la T de gas_mix ahora será la Tad
     T_ad_ideal[phi] = gas_ideal.T
     T_ad_incomplete[phi] = gas.T
 
     gas_ideal_aux.set_equivalence_ratio(phi, "CH4", f"{oxidizer}")
-    gas_ideal_aux.TP = (T_ad_ideal[phi]+T_R)/2, p # T=(T_ad+T_R)/2
+    gas_ideal_aux.equilibrate("HP")
+    gas_ideal_aux.TP = (T_ad_ideal[phi]+T_r)/2, p # T=(T_ad+T_r)/2
     cp_ave[phi] = gas_ideal_aux.cp # lista de cp (másicos) de productos de reacción completa
     if 0<phi<=1: # pobre
-        T_ad_analytic[phi] = T_R + ( phi*f_s*LHV ) / ( (1+phi*f_s)*cp_ave[phi] )
+        T_ad_analytic[phi] = T_r + ( phi*f_s*LHV ) / ( (1+phi*f_s)*cp_ave[phi] )
     elif phi>1: # rica
-        T_ad_analytic[phi] = T_R + ( f_s*LHV ) / ( (1+phi*f_s)*cp_ave[phi] )
+        T_ad_analytic[phi] = T_r + ( f_s*LHV ) / ( (1+phi*f_s)*cp_ave[phi] )
 
 
 #%% Plot T - phi
@@ -81,7 +88,7 @@ plt.figure(figsize=(8,8))
 plt.title(
     r"\bf{Temperatura\ adiabática\ de\ llama\ frente\ a\ ratio\ de\ equivalencia}" + "\n"
     f"{'Oxígeno' if type == 'oxi' else 'Aire'} \n"
-    fr"$p = {p}$ Pa $\quad T_{{0}} = {T_R}$ K",
+    fr"$p = {p}$ Pa $\quad T_{{0}} = {T_r}$ K",
     fontsize=11,
     pad=15
 )
