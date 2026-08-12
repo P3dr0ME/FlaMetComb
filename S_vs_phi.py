@@ -23,6 +23,7 @@ phi_list = [phi_begin + (phi_end-phi_begin) * (n/(N-1) + np.sin(2*np.pi*n/(N-1))
 
 vel_list = {phi: None for phi in phi_list}
 T_P_llama = {phi: None for phi in phi_list}
+T_ig_llama = {phi: None for phi in phi_list}
 cp_incomplete = {phi: None for phi in phi_list}
 
 oxidizer = "O2" if type == "oxi" else "O2:1, N2:3.76"
@@ -61,6 +62,7 @@ for j, phi in enumerate(phi_list):
     vel_list[phi] = flame.velocity[0] * 100 # cm/s
         # flame.velocity[0] = velocidad en primer grid point (inlet).
     T_P_llama[phi] = flame.T[-1] # K. Sirve para aproximar T_ad analítica.
+    T_ig_llama[phi] = flame.T[0] # K. Sirve para comparar T_ig de Cantera y T_ig analítica.
 
     cp_incomplete[phi] = flame.cp[-1]
 
