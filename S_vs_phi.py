@@ -14,26 +14,26 @@ p = ct.one_atm
 phi_begin = 0.3; phi_end = 1.8; N = 5
 
 # Definición del gas con el modelo GRI3.0
-gas = ct.Solution('gri30.yaml')
+gas_real = ct.Solution('gri30.yaml')
 
 #%% Cálculo de velocidad de llama
+
+oxidizer = "O2" if type == "oxi" else "O2:1, N2:3.76"
 
 phi_list = [phi_begin + (phi_end-phi_begin) * (n/(N-1) + np.sin(2*np.pi*n/(N-1))/(2*np.pi)) for n in range(N)]
 # Puntos que se concentran en el centro del intervalo (donde más varía la curva).
 
-vel_list = {phi: None for phi in phi_list}
-T_P_llama = {phi: None for phi in phi_list}
-T_ig_llama = {phi: None for phi in phi_list}
-cp_incomplete = {phi: None for phi in phi_list}
-
-oxidizer = "O2" if type == "oxi" else "O2:1, N2:3.76"
+# Inicialización de diccionarios de forma compacta
+vel_list, T_P_llama, T_ig_llama, q_p, cp_real = (
+    {phi: None for phi in phi_list} for _ in range(4)
+)
 
 for j, phi in enumerate(phi_list):
     # Contador j vale 0, 1, 2 (las posiciones de la lista iterada, en vez de valores)
     print(f"\033[1;36m### RATIO DE EQUIVALENCIA: {phi} ###\033[0m")
 
-    gas.TP = T_r, p
-    gas.set_equivalence_ratio(phi, 'CH4', f'{oxidizer}')
+    gas_real.TP = T_r, p
+    gas_real.set_equivalence_ratio(phi, 'CH4', f'{oxidizer}')
 
     # Llama
     flame = ct.FreeFlame(gas=gas, width=0.03)
@@ -64,7 +64,7 @@ for j, phi in enumerate(phi_list):
     T_P_llama[phi] = flame.T[-1] # K. Sirve para aproximar T_ad analítica.
     T_ig_llama[phi] = flame.T[0] # K. Sirve para comparar T_ig de Cantera y T_ig analítica.
 
-    cp_incomplete[phi] = flame.cp[-1]
+    cp_real[phi] = flame.cp[-1]
 
     print("Tiempo de cómputo %s segundos ---" % (time.time() - start_time))
 
@@ -91,13 +91,12 @@ T_act = E_a/R_u_a # K. Temperatura de activación
 
 T_ig = (T_act - np.sqrt(T_act**2 - 4*T_act*T_r)) / 2
 
-T_ad_analytic = {phi: None for phi in phi_list}
-vel_list_analytic = {phi: None for phi in phi_list}
-cp_ave = {phi: None for phi in phi_list}
-k_ave = {phi: None for phi in phi_list}
-rho_ave_reactants = {phi: None for phi in phi_list}
-
 T_ave = {phi: (T_P_llama[phi]+T_ig)/2 for phi in phi_list}
+
+# Inicialización de diccionarios de forma compacta
+T_ad_analytic, vel_list_analytic, cp_ave, k_ave, rho_ave_reactants = (
+    {phi: None for phi in phi_list} for _ in range(5)
+)
 
 for i in range(len(phi_list)):
     phi=phi_list[i]
@@ -144,7 +143,7 @@ plt.title(
 
 plt.plot(phi_list,
         vel_list.values(),
-        label="Incomplete (Cantera - GRI 3.0)",
+        label="Real (Cantera - GRI 3.0)",
         marker=".")
 
 plt.plot(phi_list,
@@ -162,7 +161,7 @@ plt.legend(loc='best', fontsize=10)
 plt.savefig(f"./plots/S_vs_phi/S_vs_phi_{type}.svg")
 plt.show()
 
-# %% Plot T vs x
+#%% Plot T vs x
 plt.figure(figsize=(8,8))
 
 plt.plot(flame.grid,
