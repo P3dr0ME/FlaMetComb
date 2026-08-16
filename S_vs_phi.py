@@ -1,4 +1,4 @@
-#%%
+#%% PREAMBLE
 import cantera as ct
 import numpy as np
 import matplotlib.pyplot as plt
@@ -8,15 +8,15 @@ import time
 start_time = time.time()
 
 # INPUTS:
-type = "oxi" # "oxi" or "air"
+type = "air" # "oxi" or "air"
 T_r = 298 # K
 p = ct.one_atm
-phi_begin = 0.3; phi_end = 1.8; N = 5
+phi_begin = 0.3; phi_end = 1.8; N = 20
 
 # Definición del gas con el modelo GRI3.0
 gas_real = ct.Solution('gri30.yaml')
 
-#%% Cálculo de velocidad de llama
+#%% Cálculo GRI-Mech 3.0 de la velocidad de llama
 
 oxidizer = "O2" if type == "oxi" else "O2:1, N2:3.76"
 
@@ -25,7 +25,7 @@ phi_list = [phi_begin + (phi_end-phi_begin) * (n/(N-1) + np.sin(2*np.pi*n/(N-1))
 
 # Inicialización de diccionarios de forma compacta
 vel_list, T_P_llama, T_ig_llama, q_p, cp_real = (
-    {phi: None for phi in phi_list} for _ in range(4)
+    {phi: None for phi in phi_list} for _ in range(5)
 )
 
 for j, phi in enumerate(phi_list):
@@ -36,7 +36,7 @@ for j, phi in enumerate(phi_list):
     gas_real.set_equivalence_ratio(phi, 'CH4', f'{oxidizer}')
 
     # Llama
-    flame = ct.FreeFlame(gas=gas, width=0.03)
+    flame = ct.FreeFlame(gas=gas_real, width=0.03)
         # Clase FreeFlame --> llama de premezcla 1D
         # width crea grid en intervalo [0,width]
         # y que solver determine ptos. intermedios.
@@ -127,12 +127,10 @@ for i in range(len(phi_list)):
     r_f_ave = 1.0 * A_0 * C_CH4**a * C_O2**b * np.exp(-T_act/T_ave[phi])
     tau_q = C_CH4/r_f_ave # s. Tiempo químico promedio
 
-
     vel_list_analytic[phi] = np.sqrt( (alpha_ave/tau_q) * (T_ad_analytic[phi]-T_ig)/(T_ig-T_r) ) * 100 # cm/s
 
 #%% Plot Speed - phi
 plt.figure(figsize=(8,8))
-
 plt.title(
     r"\bf{Velocidad\ de\ llama\ frente\ a\ ratio\ de\ equivalencia}" + "\n"
     f"{'Oxígeno' if type == 'oxi' else 'Aire'} \n"
@@ -140,58 +138,42 @@ plt.title(
     fontsize=11,
     pad=15
 )
-
 plt.plot(phi_list,
         vel_list.values(),
-        label="Real (Cantera - GRI 3.0)",
+        label="Real (GRI-Mech 3.0)",
         marker=".")
-
 plt.plot(phi_list,
         vel_list_analytic.values(),
         label="Analítica",
         marker="")
-
 plt.grid(True, which='both', alpha=0.5)
-
 plt.xlabel("Ratio de equivalencia, " + r"$\phi$")
 plt.ylabel("Velocidad de llama [cm/s]")
-
 plt.legend(loc='best', fontsize=10)
-
 plt.savefig(f"./plots/S_vs_phi/S_vs_phi_{type}.svg")
 plt.show()
 
 #%% Plot T vs x
 plt.figure(figsize=(8,8))
-
 plt.plot(flame.grid,
         flame.T,
 
         marker="")
-
 plt.grid(True, which='both', alpha=0.5)
-
 plt.xlabel("x")
 plt.ylabel("T [K]")
-
 plt.legend(loc='best', fontsize=10)
-
 plt.show()
 
 # %% Plot T_ad vs phi
 plt.figure(figsize=(8,8))
-
 plt.plot(phi_list,
         T_ad_analytic.values(),
         label="Analítica",
         marker=""
         )
-
 plt.grid(True, which='both', alpha=0.5)
-
 plt.xlabel("Ratio de equivalencia, " + r"$\phi$")
-plt.ylabel("T_ad [K]")
-
+plt.ylabel(fr"T_{{ad}} [K]")
 plt.legend(loc='best', fontsize=10)
-
 plt.show()

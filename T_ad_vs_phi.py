@@ -11,7 +11,7 @@ plt.style.use(['science'])
 type = "air" # "oxi" or "air"
 T_r = 298 # K
 p = ct.one_atm
-N=10 # Número de puntos en el vector phi_list
+N=100 # Número de puntos en el vector phi_list
 
 #%% CÁLCULO DE T_ad
 species_dict = {S.name: S for S in ct.Species.list_from_file("gri30.yaml")}
@@ -86,7 +86,6 @@ for i in range(len(phi_list)):
 
 #%% GRÁFICO T - phi
 plt.figure(figsize=(8,8))
-
 plt.title(
     r"\bf{Temperatura\ adiabática\ de\ llama\ frente\ a\ ratio\ de\ equivalencia}" + "\n"
     f"{'Oxígeno' if type == 'oxi' else 'Aire'} \n"
@@ -96,18 +95,16 @@ plt.title(
 )
 
 plt.plot(phi_list,
-        T_ad_ideal.values(),
-        label="Ideal (Cantera - GRI3.0)",
+        T_ad_real.values(),
+        label="Real (GRI-Mech 3.0)",
         marker="."
         )
 
 plt.plot(phi_list,
-        T_ad_real.values(),
-        label="Real (Cantera - GRI3.0)",
+        T_ad_ideal.values(),
+        label="Ideal (GRI-Mech 3.0)",
         marker="."
         )
-    # phi es vector de abscisas y T_ad_real, de ordenadas
-    # lw: line width
 
 plt.plot(phi_list,
         T_ad_analitica.values(),
@@ -126,7 +123,7 @@ ax.xaxis.set_minor_locator(plt.MultipleLocator(0.05))
 plt.grid(True, which='both', alpha=0.5)
 
 plt.xlabel("Ratio de equivalencia, "+ r"$\phi$")
-plt.ylabel("Temperatura adiabática [K]")
+plt.ylabel(fr"Temperatura adiabática, T_{{ad}} [K]")
 
 plt.legend(loc='best', fontsize=10)
     # muestra las label definidas en plt.plot

@@ -7,7 +7,7 @@ import scienceplots
 plt.style.use(['science'])
 
 #%% INPUTS
-type = "air" # "oxi" or "air"
+type = "oxi" # "oxi" or "air"
 T_r = 298 # K
 p = ct.one_atm
 N = 10

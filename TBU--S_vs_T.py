@@ -1,4 +1,4 @@
-#%%
+#%% PREAMBLE
 import cantera as ct
 import numpy as np
 import matplotlib.pyplot as plt
@@ -12,17 +12,16 @@ type = "air" # "oxi" or "air"
 p = ct.one_atm # atm
 phi = 1.4
 
+# Definición del gas con el modelo GRI3.0
 gas = ct.Solution('gri30.yaml')
 
 #%% Cálculo de velocidad de llama
 
+oxidizer = "O2" if type == "oxi" else "O2:1, N2:3.76"
+
 T_r_list = np. linspace(300,650,15)
 
 vel_list = [{T_r: None for T_r in T_r_list}]
-# Hay que vaciar vel_list al acabar cada bucle de presión
-# para no juntar velocidades de todas las phi.
-
-oxidizer = "O2" if type == "oxi" else "O2:1, N2:3.76"
 
 for j, T_r in enumerate(T_r_list):
     print(f"\033[1;36m## TEMPERATURA (K): {T_r} ##\033[0m")
@@ -43,10 +42,8 @@ for j, T_r in enumerate(T_r_list):
     flame_sol_previa = flame.to_array()
 
     print(f"\033[1;36m# VELOCIDAD DE LLAMA (cm/s): {flame.velocity[0]*100} cm/s ###\033[0m")
-    vel_list[T_r].append(flame.velocity[0] * 100) # cm/s
-    # plt.plot(flame.grid, flame.velocity)
-    # plt.show()
 
+    vel_list[T_r].append(flame.velocity[0] * 100) # cm/s
 
     print("Tiempo de cómputo %s segundos ---" % (time.time() - start_time))
 
@@ -64,7 +61,3 @@ plt.ylabel("Velocidad de llama [cm/s]")
 plt.legend(loc='best', fontsize=10)
 plt.savefig(f"./plots/S_vs_T/S_vs_T_{type}.svg")
 plt.show()
-
-
-
-# %%
