@@ -14,6 +14,7 @@ N = 10
 
 #%% CÁLCULO DE q_p
 gas_real = ct.Solution('gri30.yaml')
+
 species_dict = {S.name: S for S in ct.Species.list_from_file("gri30.yaml")}
 ideal_species = [species_dict[S] for S in ("CH4", "O2", "N2", "CO2", "H2O")]
 gas_ideal = ct.Solution(thermo="ideal-gas",
@@ -76,7 +77,6 @@ plt.plot(phi_list, [q_p_real[phi] for phi in phi_list], 'o-', label="Real (Gri-M
 plt.plot(phi_list, [q_p_ideal[phi] for phi in phi_list], 'o-', label="Ideal (Gri-Mech 3.0)")
 plt.plot(phi_list, [q_p_analitica[phi] for phi in phi_list], 's--', label="Analítico (con LHV)")
 
-
 plt.grid(True, which='both', alpha=0.5)
 
 plt.xlabel("Ratio de equivalencia, " + r"$\phi$")
@@ -84,15 +84,3 @@ plt.ylabel("Calor de combustión por kg de mezcla, " + r"$q_p$ (MJ/kg)")
 plt.legend()
 
 plt.show()
-
-#%% Gráfico X vs phi de diferentes especies
-# plt.figure(8,8)
-# plt.plot(phi_list,
-#         [X_reactantes[phi]["CH4"] for phi in phi_list], 'o-', label="CH4 (reactantes)")
-
-# plt.grid(True, which='both', alpha=0.5)
-
-# plt.xlabel("Ratio de equivalencia, " + r"$\phi$")
-# plt.ylabel("Fracción molar, " + r"$X_i$")
-
-# plt.show

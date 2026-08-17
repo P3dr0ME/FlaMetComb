@@ -10,7 +10,7 @@ from scipy.optimize import newton
 plt.style.use(['science'])
 
 #%% INPUTS
-type = "air" # "oxi" or "air"
+type = "oxi" # "oxi" or "air"
 T_r = 298 # K
 p = ct.one_atm
 N=100 # Número de puntos en el vector phi_list
@@ -45,6 +45,7 @@ T_ad_ideal_aux, T_ad_ana_m1, cp_ave, q_p_ana_m1 = (
 )
 
 for phi in phi_list:
+
     gas_ideal.TP = T_r, p
     gas_ideal.set_equivalence_ratio(phi, "CH4", f"{oxidizer}")
     gas_ideal.equilibrate("HP")
@@ -72,11 +73,17 @@ eps = { phi:  0 if phi<=1 else phi-1  for phi in phi_list }
 delta = { phi:  2/phi - 2 if phi<=1 else 0  for phi in phi_list }
 
 # Moles de especies en función de phi
-n_ir = { phi:  {"CH4": 1+eps[phi], "O2": 2+delta[phi], "N2": 79/21*(2+delta[phi]) , "CO2": 0, "H2O": 0} for phi in phi_list }
-n_ip = { phi:  {"CH4": eps[phi], "O2": delta[phi], "N2": 79/21*(2+delta[phi]) , "CO2": 1, "H2O": 2} for phi in phi_list }
+n_ir = {
+    phi:  {"CH4": 1+eps[phi], "O2": 2+delta[phi], "N2": 79/21*(2+delta[phi]) if oxidizer=="air" else 0 , "CO2": 0, "H2O": 0}
+    for phi in phi_list
+    }
+n_ip = {
+    phi:  {"CH4": eps[phi], "O2": delta[phi], "N2": 79/21*(2+delta[phi]) if oxidizer=="air" else 0, "CO2": 1, "H2O": 2}
+    for phi in phi_list
+    }
 
 # Calor específico molar
-cp_molar_r = {sp: gas_ideal.species(f"{sp}").thermo.cp((T_r-298)/2) / 1e3 for sp in Dh0_f} # J/mol/K
+cp_molar_r = { sp: gas_ideal.species(f"{sp}").thermo.cp((T_r+298)/2) / 1e3 for sp in Dh0_f } # J/mol/K
 
 # Inicializar diccionarios
 T_ad_ana_m2, q_p_ana_m2 = (
@@ -93,14 +100,14 @@ for phi in phi_list:
 
     # Función cuya raíz se busca
     def f(T_p):
-        cp_molar_p = { sp: gas_ideal.species(sp).thermo.cp((T_p + 298)/2) / 1e3 for sp in Dh0_f }  # J/mol/K
-        H_p = sum( n_ip[phi][sp] * cp_molar_p[sp] * (T_p - 298) for sp in Dh0_f )
-        H_r = sum( n_ir[phi][sp] * cp_molar_r[sp] * (T_r - 298) for sp in Dh0_f )
+        cp_molar_p = { sp: gas_ideal.species(sp).thermo.cp((T_p+298)/2) / 1e3 for sp in Dh0_f }  # J/mol/K
+        H_p = sum( n_ip[phi][sp] * cp_molar_p[sp]*(T_p-298) for sp in Dh0_f )
+        H_r = sum( n_ir[phi][sp] * cp_molar_r[sp]*(T_r-298) for sp in Dh0_f )
 
         return H_p - (-Q0_p + H_r)
 
     # Resolver f(Tad) = 0
-    T_ad_ana_m2[phi] = newton(f, x0=2000, tol=1e-6, maxiter=100)
+    T_ad_ana_m2[phi] = newton(f, x0=3000, tol=1e-12)
     q_p_ana_m2[phi] = -Q0_p / ( (n_ir[phi]["CH4"]*M_CH4)*(1+1/(phi*f_s)) ) / 1e6 # MJ/kg
 
 #%% CÁLCULO DE T_ad Método 3 (Cantera)
