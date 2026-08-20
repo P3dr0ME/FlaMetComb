@@ -19,6 +19,9 @@ gas = ct.Solution('gri30.yaml')
 phi_list = [0.8, 1.0, 1.2, 1.4]
 p_list = [np.float64(i*ct.one_atm) for i in np.geomspace(1,30,10)]
 # Creo una lista con más densidad de puntos al principio. En Pa.
+if not 1.00 in phi_list: # añadir phi=1.00 al la fuerza
+    idx = np.searchsorted(phi_list, 1.00)
+    phi_list = np.insert(phi_list, idx, 1.00)
 
 vel_list = {phi: [] for phi in phi_list}
 # Diccionario de listas (de momento vacías) cuyas keys son los valores de phi_list.

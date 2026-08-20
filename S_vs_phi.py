@@ -22,6 +22,9 @@ oxidizer = "O2" if type == "oxi" else "O2:1, N2:3.76"
 
 phi_list = [phi_begin + (phi_end-phi_begin) * (n/(N-1) + np.sin(2*np.pi*n/(N-1))/(2*np.pi)) for n in range(N)]
 # Puntos que se concentran en el centro del intervalo (donde más varía la curva).
+if not 1.00 in phi_list: # añadir phi=1.00 al la fuerza
+    idx = np.searchsorted(phi_list, 1.00)
+    phi_list = np.insert(phi_list, idx, 1.00)
 
 # Inicialización de diccionarios de forma compacta
 vel_list, T_P_llama, T_ig_llama, q_p, cp_real = (
