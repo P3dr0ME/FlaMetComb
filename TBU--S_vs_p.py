@@ -26,7 +26,7 @@ if not 1.00 in phi_list: # añadir phi=1.00 al la fuerza
 vel_list = {phi: [] for phi in phi_list}
 # Diccionario de listas (de momento vacías) cuyas keys son los valores de phi_list.
 
-oxidizer = "O2" if type == "oxi" else "O2:1, N2:3.76"
+oxidizer = "O2" if type == "oxi" else f"O2:1, N2:{79/21}"
 
 for j, phi in enumerate(phi_list):
     print(f"\033[1;36m### RATIO DE EQUIVALENCIA: {phi} ###\033[0m")

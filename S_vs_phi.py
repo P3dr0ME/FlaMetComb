@@ -18,7 +18,7 @@ gas_real = ct.Solution('gri30.yaml')
 
 #%% Cálculo GRI-Mech 3.0 de la velocidad de llama
 
-oxidizer = "O2" if type == "oxi" else "O2:1, N2:3.76"
+oxidizer = "O2" if type == "oxi" else f"O2:1, N2:{79/21}"
 
 phi_list = [phi_begin + (phi_end-phi_begin) * (n/(N-1) + np.sin(2*np.pi*n/(N-1))/(2*np.pi)) for n in range(N)]
 # Puntos que se concentran en el centro del intervalo (donde más varía la curva).

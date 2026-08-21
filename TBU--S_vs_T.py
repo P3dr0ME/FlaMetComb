@@ -17,7 +17,7 @@ gas = ct.Solution('gri30.yaml')
 
 #%% Cálculo de velocidad de llama
 
-oxidizer = "O2" if type == "oxi" else "O2:1, N2:3.76"
+oxidizer = "O2" if type == "oxi" else f"O2:1, N2:{79/21}"
 
 T_r_list = np. linspace(300,650,15)
 
