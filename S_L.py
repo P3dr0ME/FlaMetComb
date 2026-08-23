@@ -6,34 +6,41 @@ import scienceplots
 plt.style.use(["science"])
 import pandas as pd
 from scipy.optimize import newton
+import os
 
 
 
 #%% INPUTS
-comburente = "air"  # "oxi" or "air"
+comburente = "oxi"  # "oxi" or "air"
+borrar_csv_antiguo = False
 
-# Inputs de phi
-phi_list = [0.5, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.4, 1.6, 1.8]
-p_list_plot = [1, 5, 10, 30]       # atm
-T_r_list_plot = [298, 400, 500, 600] # K
-# phi_list = np.geomspace( 0.5, 1.8, num=25 )
-# phi_list_forced = [1.0, 1.2, 1.4]
-# phi_list = np.sort(np.unique(np.concatenate(([phi_list, phi_list_forced]))))
+# Seleccionar curva a representar (descomentar 1)
+# "1 {dato}" --> dato_list debe contener 1 solo elemento entre corchetes []
 
-# Inputs de p
-p_list = [0.1e6, 0.2e6, 0.5e6, 0.8e6, 1.0e6, 2.027e6, 4.0e6, 6.0e6] # Pa
-# p_list = np.geomspace( 0.1e6, 6e6, num=20 ) # Pa
-# p_list_forced = [0.2e6, 0.5e6, 1e6, 2e6, 20*ct.one_atm]
-# p_list = np.sort(np.unique(np.concatenate(([p_list, p_list_forced]))))
+# # S vs p | 1 phi, varios T_r
+# selector_plot = "S vs p | 1 phi, varios T_r"
+# phi_list = [1.00]
+# p_list = np.linspace(0.1e6, 6e6, num=5) # Pa
+# p_list = [0.2e6, 0.3e6, 0.5e6, 0.7e6, ct.one_atm]
+# T_r_list = [300, 373, 500] # K
 
+# S vs phi | 1 T_r, varios p
+selector_plot = "S vs phi | 1 T_r, varios p"
+phi_list = np.linspace(0.1, 2.0, num=20)
+p_list = [ct.one_atm] # Pa
+T_r_list = [298] # K
 
-# Inputs T_r
-T_r_list = [298, 300, 343, 373, 375, 400, 418, 443, 473, 500, 600, 700]
-# T_r_list = np.linspace( 298, 700, num=16 ) # K
-# T_r_list_forced = [300, 343, 373, 375, 400, 418, 443, 473, 500]
-# T_r_list = np.sort(np.unique(np.concatenate(([T_r_list, T_r_list_forced]))))
+# # S vs phi | 1 p, varios T_r
+# selector_plot = "S vs phi | 1 p, varios T_r"
+# phi_list =
+# p_list = # Pa
+# T_r_list = # K
 
-
+# # S vs T_r | 1 phi, varios p
+# selector_plot = "S vs T_r | 1 phi, varios p"
+# phi_list = [1.00]
+# p_list = [0.1e6, 0.5e6, 1e6] # Pa
+# T_r_list = np.linspace(300, 700, num=8) # K
 
 #%% ESPECIES Y GASES
 # Oxidante
@@ -165,7 +172,7 @@ def Llama_analitica( phi, p, T_r):
 
 #%% FUNCIÓN DE CÁLCULO CONJUNTO
 def CALCULO_LLAMA( phi, p, T_r, flame_sol_previa=None, loglevel=0 ):
-    print( f"\033[1;36m phi = {phi:.6g} | p = {p/ct.one_atm:.6g} atm | T_r = {T_r:.6g} K \033[0m" )
+    print( f"\033[1;36m phi = {phi:.6g} | p = {p/1e6} MPa | T_r = {T_r:.6g} K \033[0m" )
 
     # Cantera
     try:
@@ -184,13 +191,13 @@ def CALCULO_LLAMA( phi, p, T_r, flame_sol_previa=None, loglevel=0 ):
             **res_analiticos
             }
         }
-        # la key es una tuple (como una lista pero inmutable) con los datos (lists no pueden ser dict keys)
-        # el value es un diccionario con sus resultados
+        # key es una tuple con los datos (lists no pueden ser dict keys)
+        # value es un diccionario con resultados
 
         return res, flame.to_array() # Esta flame.to_array se realimenta a la propia función en siguiente bucle como flame_sol_previa
 
     except Exception as e: # Si falla flame porque no converge, que avise dónde y siga.
-        print(f"\033[1;31m FALLO: phi={phi}, p={p/ct.one_atm} atm, T_r={T_r} K \033[0m")
+        print(f"\033[1;31m FALLO: phi={phi}, p={p/1e6} MPa, T_r={T_r} K \033[0m")
         print(f"    {type(e).__name__}: {e}")
 
         return {}, None
@@ -200,104 +207,136 @@ def CALCULO_LLAMA( phi, p, T_r, flame_sol_previa=None, loglevel=0 ):
 #%% CÁLCULO DE LLAMA
 RESULTADOS = {}
 for phi in phi_list:
-    for T_r in T_r_list_plot_phi:
+    for T_r in T_r_list:
         flame_sol_previa=None
-        for p in p_list_plot_phi:
-            if (phi, p, T_r) not in RESULTADOS: # Calcular solo si no se ha calculado ya para los mismos datos
-                res, flame_sol_previa = CALCULO_LLAMA( phi=phi, p=p, T_r=T_r, flame_sol_previa=flame_sol_previa, loglevel=1 )
-                RESULTADOS.update(res)
-
-for T_r in T_r_list:
-    for phi in phi_list_plot_T_r:
-        flame_sol_previa=None
-        for p in p_list_plot_T_r:
-            if (phi, p, T_r) not in RESULTADOS: # Calcular solo si no se ha calculado ya para los mismos datos
-                res, flame_sol_previa = CALCULO_LLAMA( phi=phi, p=p, T_r=T_r, flame_sol_previa=flame_sol_previa, loglevel=1 )
-                RESULTADOS.update(res)
-
-for p in p_list:
-    for phi in phi_list_plot_p:
-        flame_sol_previa=None
-        for T_r in T_r_list_plot_p:
+        for p in p_list:
             if (phi, p, T_r) not in RESULTADOS: # Calcular solo si no se ha calculado ya para los mismos datos
                 res, flame_sol_previa = CALCULO_LLAMA( phi=phi, p=p, T_r=T_r, flame_sol_previa=flame_sol_previa, loglevel=1 )
                 RESULTADOS.update(res)
 
 
 
-#%% Guardar en CSV
-RESULTADOS_CSV = pd.DataFrame([
+#%% TABLA CSV
+ruta = f"./Res/S_L/RESULTADOS_{comburente}.csv"
+
+# Borrar CSV antiguo (si existe)
+if borrar_csv_antiguo:
+    os.path.exists(ruta) and os.remove(ruta)
+
+# Resultados nuevos
+RESULTADOS_CSV_NUEVOS = pd.DataFrame([
     {
         "phi": phi,
-        "p": p/ct.one_atm,
-        "T": T_r,
+        "p": p,
+        "T_r": T_r,
         "S_L_Cantera": datos["S_L_Cantera"],
         "S_L_analitica": datos["S_L_analitica"]
     }
     for (phi, p, T_r), datos in RESULTADOS.items()
 ])
 
-RESULTADOS_CSV.to_csv(f"./Res/S_L/RESULTADOS_{comburente}.csv", index=False)
+# Leer resultados anteriores y combinar
+try:
+    RESULTADOS_CSV_ANTIGUOS = pd.read_csv(ruta)
+    RESULTADOS_CSV = pd.concat([RESULTADOS_CSV_ANTIGUOS, RESULTADOS_CSV_NUEVOS], ignore_index=True)
+except FileNotFoundError:
+    RESULTADOS_CSV = RESULTADOS_CSV_NUEVOS
+
+# Eliminar posibles duplicados
+RESULTADOS_CSV = RESULTADOS_CSV.drop_duplicates( subset=["phi", "p", "T_r"], keep="last" )
+
+# Guardar
+RESULTADOS_CSV.to_csv(ruta, index=False)
 
 
 
-#%% Leer CSV
-RESULTADOS_CSV = pd.read_csv(f"./Res/S_L/RESULTADOS_{comburente}.csv")
+#%% PLOT
+if selector_plot == "S vs p | 1 phi, varios T_r":
+    # S vs p | 1 phi, varios T_r
+    plt.figure(figsize=(8,8))
+    plt.title(
+    f"{r"\bf{Oxígeno}" if comburente == 'oxi' else r"\bf{Aire}"} \n"
+    fr"$\phi = {phi_list[0]}$",
+    fontsize=11,
+    pad=15
+    )
 
-#%% S vs p | 1 phi, varios T_r
-phi_ref = 1.0
-T_list = [298, 400, 500, 600]
+    for T_r in T_r_list:
+        d = RESULTADOS_CSV[(np.isclose(RESULTADOS_CSV.phi, phi_list)) & (np.isclose(RESULTADOS_CSV.T_r, T_r))].sort_values("p")
+        color = plt.gca()._get_lines.get_next_color()
+        plt.plot(d.p/1e6, d.S_L_Cantera/100, ".-", label=fr"Cantera, $T_r={T_r}$ K", color=color)
+        plt.plot(d.p/1e6, d.S_L_analitica/100, "--", label=fr"Analítica, $T_r={T_r}$ K", color=color)
 
-plt.figure(figsize=(8,8))
-for T in T_list:
-    d = RESULTADOS_CSV[(np.isclose(RESULTADOS_CSV.phi, phi_ref)) & (np.isclose(RESULTADOS_CSV.T, T))].sort_values("p")
-    plt.plot(d.p, d.S_L_Cantera, ".-", label=fr"Cantera, $T_r$={T} K")
-    plt.plot(d.p, d.S_L_analitica, "--", label=fr"Analítica, $T_r$={T} K")
+    plt.xlabel("$p$ (MPa)"); plt.ylabel("$S_L$ (m/s)")
+    plt.grid(alpha=.5); plt.legend()
 
-plt.xlabel("$p$ [atm]"); plt.ylabel("$S_L$ [cm/s]")
-plt.grid(alpha=.5); plt.legend(); plt.show()
+    plt.savefig(f"./Res/S_L/S_vs_p_{comburente}.svg")
+    plt.show()
 
+elif selector_plot == "S vs phi | 1 T_r, varios p":
+    # S vs phi | 1 T_r, varios p
+    plt.figure(figsize=(8,6))
+    plt.title(
+    f"{r"\bf{Oxígeno}" if comburente == 'oxi' else r"\bf{Aire}"} \n"
+    fr"$T_r = {T_r_list[0]}$ K",
+    fontsize=11,
+    pad=15
+    )
 
+    for p in p_list:
+        d = RESULTADOS_CSV[(np.isclose(RESULTADOS_CSV.T_r, T_r_list)) & (np.isclose(RESULTADOS_CSV.p, p))].sort_values("phi")
+        color = plt.gca()._get_lines.get_next_color()
+        plt.plot(d.phi, d.S_L_Cantera, ".-", label=fr"Cantera, $p={p/1e6}$ MPa", color=color)
+        plt.plot(d.phi, d.S_L_analitica, "--", label=fr"Analítica, $p={p/1e6}$ MPa", color=color)
 
-#%% S vs phi | 1 T_r, varios p
-T_ref = 298
-p_list = [1, 5, 10, 30]
+    plt.xlabel(r"$\phi$"); plt.ylabel("$S_L$ (cm/s)")
+    plt.grid(alpha=.5); plt.legend()
 
-plt.figure(figsize=(8,8))
-for p in p_list:
-    d = RESULTADOS_CSV[(np.isclose(RESULTADOS_CSV.T, T_ref)) & (np.isclose(RESULTADOS_CSV.p, p))].sort_values("phi")
-    plt.plot(d.phi, d.S_L_Cantera, ".-", label=fr"Cantera, $p$={p} atm")
-    plt.plot(d.phi, d.S_L_analitica, "--", label=fr"Analítica, $p$={p} atm")
+    plt.savefig(f"./Res/S_L/S_vs_phi_varios_p_{comburente}.svg")
+    plt.show()
 
-plt.xlabel(r"$\phi$"); plt.ylabel("$S_L$ [cm/s]")
-plt.grid(alpha=.5); plt.legend(); plt.show()
+elif selector_plot == "S vs phi | 1 p, varios T_r":
+    # S vs phi | 1 p, varios T_r
+    plt.figure(figsize=(8,8))
+    plt.title(
+    f"{r"\bf{Oxígeno}" if comburente == 'oxi' else r"\bf{Aire}"} \n"
+    fr"$p = {p_list[0]/1e6}$ MPa",
+    fontsize=11,
+    pad=15
+    )
 
+    for T_r in T_r_list:
+        d = RESULTADOS_CSV[(np.isclose(RESULTADOS_CSV.p, p_list)) & (np.isclose(RESULTADOS_CSV.T_r, T_r))].sort_values("phi")
+        color = plt.gca()._get_lines.get_next_color()
+        plt.plot(d.phi, d.S_L_Cantera, ".-", label=fr"Cantera, $T_r={T_r}$ K", color=color)
+        plt.plot(d.phi, d.S_L_analitica, "--", label=fr"Analítica, $T_r={T_r}$ K", color=color)
 
+    plt.xlabel(r"$\phi$"); plt.ylabel("$S_L$ (cm/s)")
+    plt.grid(alpha=.5); plt.legend()
 
-#%% S vs phi | 1 p, varios T_r
-p_ref = 1
-T_list = [298, 400, 500, 600]
+    plt.savefig(f"./Res/S_L/S_vs_phi_varios_T_r_{comburente}.svg")
+    plt.show()
 
-plt.figure(figsize=(8,8))
-for T in T_list:
-    d = RESULTADOS_CSV[(np.isclose(RESULTADOS_CSV.p, p_ref)) & (np.isclose(RESULTADOS_CSV.T, T))].sort_values("phi")
-    plt.plot(d.phi, d.S_L_Cantera, ".-", label=fr"Cantera, $T_r$={T} K")
-    plt.plot(d.phi, d.S_L_analitica, "--", label=fr"Analítica, $T_r$={T} K")
+elif selector_plot == "S vs T_r | 1 phi, varios p":
+    # S vs T_r | 1 phi, varios p
+    plt.figure(figsize=(8,8))
+    plt.title(
+    f"{r"\bf{Oxígeno}" if comburente == 'oxi' else r"\bf{Aire}"} \n"
+    fr"$\phi = {phi_list[0]}$",
+    fontsize=11,
+    pad=15
+    )
 
-plt.xlabel(r"$\phi$"); plt.ylabel("$S_L$ [cm/s]")
-plt.grid(alpha=.5); plt.legend(); plt.show()
+    for p in p_list:
+        d = RESULTADOS_CSV[(np.isclose(RESULTADOS_CSV.phi, phi_list)) & (np.isclose(RESULTADOS_CSV.p, p))].sort_values("T_r")
+        color = plt.gca()._get_lines.get_next_color()
+        plt.plot(d.T_r, d.S_L_Cantera/100, ".-", label=fr"Cantera, $p={p/1e6}$ MPa", color=color)
+        plt.plot(d.T_r, d.S_L_analitica/100, "--", label=fr"Analítica, $p={p/1e6}$ MPa", color=color)
 
+    plt.xlabel("$T_r$ (K)"); plt.ylabel("$S_L$ (m/s)")
+    plt.grid(alpha=.5); plt.legend()
 
+    plt.savefig(f"./Res/S_L/S_vs_T_r_{comburente}.svg")
+    plt.show()
 
-#%% S vs T_r | 1 phi, varios p
-phi_ref = 1.0
-p_list = [1, 5, 10, 30]
-
-plt.figure(figsize=(8,8))
-for p in p_list:
-    d = RESULTADOS_CSV[(np.isclose(RESULTADOS_CSV.phi, phi_ref)) & (np.isclose(RESULTADOS_CSV.p, p))].sort_values("T")
-    plt.plot(d.T, d.S_L_Cantera, ".-", label=fr"Cantera, $p$={p} atm")
-    plt.plot(d.T, d.S_L_analitica, "--", label=fr"Analítica, $p$={p} atm")
-
-plt.xlabel("$T_r$ [K]"); plt.ylabel("$S_L$ [cm/s]")
-plt.grid(alpha=.5); plt.legend(); plt.show()
+# %%
