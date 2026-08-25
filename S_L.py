@@ -14,21 +14,21 @@ import os
 comburente = "oxi"  # "oxi" or "air"
 borrar_csv_antiguo = False
 
+
 # Seleccionar curva a representar (descomentar 1)
 # "1 {dato}" --> dato_list debe contener 1 solo elemento entre corchetes []
 
 # # S vs p | 1 phi, varios T_r
 # selector_plot = "S vs p | 1 phi, varios T_r"
 # phi_list = [1.00]
-# p_list = np.linspace(0.1e6, 6e6, num=5) # Pa
-# p_list = [0.2e6, 0.3e6, 0.5e6, 0.7e6, ct.one_atm]
+# p_list = np.sort(np.unique(np.concatenate([np.linspace(0.1e6, 6e6, num=5), [0.2e6, 0.3e6, 0.5e6, 0.7e6, ct.one_atm]]))) # Pa
 # T_r_list = [300, 373, 500] # K
 
-# S vs phi | 1 T_r, varios p
-selector_plot = "S vs phi | 1 T_r, varios p"
-phi_list = np.linspace(0.1, 2.0, num=20)
-p_list = [ct.one_atm] # Pa
-T_r_list = [298] # K
+# # S vs phi | 1 T_r, varios p
+# selector_plot = "S vs phi | 1 T_r, varios p"
+# phi_list = np.linspace(0.6, 1.4, num=10)
+# p_list = [0.1e6, 0.2e6, 0.5e6, 1e6, 2e6] # Pa
+# T_r_list = [300] # K
 
 # # S vs phi | 1 p, varios T_r
 # selector_plot = "S vs phi | 1 p, varios T_r"
@@ -36,11 +36,13 @@ T_r_list = [298] # K
 # p_list = # Pa
 # T_r_list = # K
 
-# # S vs T_r | 1 phi, varios p
-# selector_plot = "S vs T_r | 1 phi, varios p"
-# phi_list = [1.00]
-# p_list = [0.1e6, 0.5e6, 1e6] # Pa
-# T_r_list = np.linspace(300, 700, num=8) # K
+# S vs T_r | 1 phi, varios p
+selector_plot = "S vs T_r | 1 phi, varios p"
+phi_list = [1.00]
+p_list = [0.1e6, 0.5e6, 1e6] # Pa
+T_r_list = np.linspace(300, 700, num=8) # K
+
+
 
 #%% ESPECIES Y GASES
 # Oxidante
@@ -217,7 +219,7 @@ for phi in phi_list:
 
 
 #%% TABLA CSV
-ruta = f"./Res/S_L/RESULTADOS_{comburente}.csv"
+ruta = f"./Res/S_L/S_L_RESULTADOS_{comburente}.csv"
 
 # Borrar CSV antiguo (si existe)
 if borrar_csv_antiguo:
@@ -268,7 +270,7 @@ if selector_plot == "S vs p | 1 phi, varios T_r":
         plt.plot(d.p/1e6, d.S_L_analitica/100, "--", label=fr"Analítica, $T_r={T_r}$ K", color=color)
 
     plt.xlabel("$p$ (MPa)"); plt.ylabel("$S_L$ (m/s)")
-    plt.grid(alpha=.5); plt.legend()
+    plt.grid(True, which='both', alpha=0.5); plt.legend()
 
     plt.savefig(f"./Res/S_L/S_vs_p_{comburente}.svg")
     plt.show()
@@ -290,7 +292,7 @@ elif selector_plot == "S vs phi | 1 T_r, varios p":
         plt.plot(d.phi, d.S_L_analitica, "--", label=fr"Analítica, $p={p/1e6}$ MPa", color=color)
 
     plt.xlabel(r"$\phi$"); plt.ylabel("$S_L$ (cm/s)")
-    plt.grid(alpha=.5); plt.legend()
+    plt.grid(True, which='both', alpha=0.5); plt.legend()
 
     plt.savefig(f"./Res/S_L/S_vs_phi_varios_p_{comburente}.svg")
     plt.show()
@@ -312,7 +314,7 @@ elif selector_plot == "S vs phi | 1 p, varios T_r":
         plt.plot(d.phi, d.S_L_analitica, "--", label=fr"Analítica, $T_r={T_r}$ K", color=color)
 
     plt.xlabel(r"$\phi$"); plt.ylabel("$S_L$ (cm/s)")
-    plt.grid(alpha=.5); plt.legend()
+    plt.grid(True, which='both', alpha=0.5); plt.legend()
 
     plt.savefig(f"./Res/S_L/S_vs_phi_varios_T_r_{comburente}.svg")
     plt.show()
@@ -334,7 +336,7 @@ elif selector_plot == "S vs T_r | 1 phi, varios p":
         plt.plot(d.T_r, d.S_L_analitica/100, "--", label=fr"Analítica, $p={p/1e6}$ MPa", color=color)
 
     plt.xlabel("$T_r$ (K)"); plt.ylabel("$S_L$ (m/s)")
-    plt.grid(alpha=.5); plt.legend()
+    plt.grid(True, which='both', alpha=0.5); plt.legend()
 
     plt.savefig(f"./Res/S_L/S_vs_T_r_{comburente}.svg")
     plt.show()
