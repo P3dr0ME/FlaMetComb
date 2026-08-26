@@ -13,7 +13,7 @@ import os
 
 
 #%% INPUTS
-comburente = "oxi"  # "oxi" or "air"
+comburente = "air"  # "oxi" or "air"
 borrar_csv_antiguo = False
 
 
@@ -35,7 +35,7 @@ borrar_csv_antiguo = False
 # T_ad vs p | 1 phi, varios T_r
 selector_plot = "T_ad vs p | 1 phi, varios T_r"
 phi_list = [1.00]
-p_list = np.sort(np.unique(np.concatenate([np.linspace(0.1e6, 30e6, num=25), [0.75e6, 0.77e6, 0.78e6]]))) # Pa
+p_list = np.linspace(0.1*ct.one_atm, 30*ct.one_atm, num=25) # Pa
 T_r_list = [300] # K
 
 # # T_ad vs T_r | 1 phi, varios p
